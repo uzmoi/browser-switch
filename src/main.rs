@@ -5,8 +5,9 @@ mod config;
 use browser::Browser;
 use config::Config;
 use iced::{
+    theme,
     widget::{button, column, container, row, scrollable, text, Column},
-    window, Application, Command, Settings,
+    window, Application, Command, Element, Length, Settings,
 };
 use url::Url;
 
@@ -41,7 +42,7 @@ enum Message {
 impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
-    type Theme = iced::theme::Theme;
+    type Theme = theme::Theme;
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
@@ -68,6 +69,9 @@ impl Application for App {
     fn title(&self) -> String {
         String::from("Browser switch")
     }
+    fn theme(&self) -> theme::Theme {
+        theme::Theme::Dark
+    }
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Open(browser) => {
@@ -86,8 +90,8 @@ impl Application for App {
             }
         }
     }
-    fn view(&self) -> iced::Element<'_, Self::Message> {
-        let main: iced::Element<'_, Self::Message> = if let Some(config) = self
+    fn view(&self) -> Element<'_, Self::Message> {
+        let main: Element<'_, Self::Message> = if let Some(config) = self
             .config
             .as_ref()
             .filter(|config| config.browsers.len() != 0)
@@ -98,34 +102,50 @@ impl Application for App {
                     .iter()
                     .map(|browser| {
                         row![
-                            text(&browser.name),
+                            text(&browser.name).width(Length::Fill),
                             button("Open").on_press(Message::Open(browser.clone())),
                         ]
+                        .spacing(8)
                         .into()
                     })
                     .collect(),
             )
+            .spacing(12)
             .into()
         } else {
             text("No browser configured.").into()
         };
 
-        container(column![
-            text("Browser switch"),
-            text(format!(
-                "URL: {}",
-                self.current_url
-                    .as_ref()
-                    .map(|url| url.to_string())
-                    .unwrap_or(String::from("N/A"))
-            )),
-            scrollable(main),
-            button(text("Cancel")).on_press(Message::Next)
-        ])
+        container(
+            column![
+                row![
+                    text("Browser switch").width(Length::Fill),
+                    button(text("Cancel")).on_press(Message::Next)
+                ],
+                text(format!(
+                    "URL: {}",
+                    self.current_url
+                        .as_ref()
+                        .map(|url| url.to_string())
+                        .unwrap_or(String::from("N/A"))
+                ))
+                .size(20),
+                scrollable(main),
+            ]
+            .spacing(18),
+        )
+        .width(Length::Fill)
+        .padding(12)
         .into()
     }
 }
 
 fn main() -> iced::Result {
-    App::run(Settings::default())
+    App::run(Settings {
+        window: window::Settings {
+            level: window::Level::AlwaysOnTop,
+            ..window::Settings::default()
+        },
+        ..Settings::default()
+    })
 }
