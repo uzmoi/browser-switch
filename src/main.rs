@@ -1,3 +1,4 @@
+mod auto_switch;
 mod browser;
 mod config;
 
@@ -11,8 +12,24 @@ use url::Url;
 
 struct App {
     urls: std::vec::IntoIter<Url>,
-    current_url: Url,
+    current_url: Option<Url>,
     config: Option<Config>,
+}
+
+impl App {
+    fn next(&mut self) -> Option<Url> {
+        let config = self.config.as_ref()?;
+
+        while let Some(next_url) = self.urls.next() {
+            if let Some(browser) = config.match_browser(&next_url) {
+                browser.open(vec![next_url.to_string()]);
+            } else {
+                return Some(next_url);
+            }
+        }
+
+        None
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -32,17 +49,21 @@ impl Application for App {
             .skip(1)
             .filter_map(|arg| Url::parse(&arg).ok())
             .collect::<Vec<_>>();
-        let mut urls = urls.into_iter();
-        let current_url = urls.next().unwrap();
+
         let config = config::Config::load_file().transpose().ok().flatten();
-        (
-            App {
-                urls,
-                current_url,
-                config,
-            },
-            Command::none(),
-        )
+        let mut app = App {
+            urls: urls.into_iter(),
+            current_url: None,
+            config,
+        };
+        let command = if let Some(next_url) = app.next() {
+            app.current_url = Some(next_url);
+            Command::none()
+        } else {
+            window::close()
+        };
+
+        (app, command)
     }
     fn title(&self) -> String {
         String::from("Browser switch")
@@ -50,12 +71,14 @@ impl Application for App {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Open(browser) => {
-                browser.open(vec![self.current_url.to_string()]);
+                if let Some(current_url) = &self.current_url {
+                    browser.open(vec![current_url.to_string()]);
+                }
                 self.update(Message::Next)
             }
             Message::Next => {
-                if let Some(next_url) = self.urls.next() {
-                    self.current_url = next_url;
+                if let Some(next_url) = self.next() {
+                    self.current_url = Some(next_url);
                     Command::none()
                 } else {
                     window::close()
@@ -81,7 +104,7 @@ impl Application for App {
         );
         container(column![
             text("Browser switch"),
-            text(format!("URL: {}", self.current_url)),
+            text(format!("URL: {}", self.current_url.as_ref().unwrap())),
             scrollable(browser_list),
             button(text("Cancel")).on_press(Message::Next)
         ])
