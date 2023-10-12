@@ -87,25 +87,39 @@ impl Application for App {
         }
     }
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let browser_list = Column::with_children(
-            self.config
-                .as_ref()
-                .unwrap()
-                .browsers
-                .iter()
-                .map(|browser| {
-                    row![
-                        text(&browser.name),
-                        button("Open").on_press(Message::Open(browser.clone())),
-                    ]
-                    .into()
-                })
-                .collect(),
-        );
+        let main: iced::Element<'_, Self::Message> = if let Some(config) = self
+            .config
+            .as_ref()
+            .filter(|config| config.browsers.len() != 0)
+        {
+            Column::with_children(
+                config
+                    .browsers
+                    .iter()
+                    .map(|browser| {
+                        row![
+                            text(&browser.name),
+                            button("Open").on_press(Message::Open(browser.clone())),
+                        ]
+                        .into()
+                    })
+                    .collect(),
+            )
+            .into()
+        } else {
+            text("No browser configured.").into()
+        };
+
         container(column![
             text("Browser switch"),
-            text(format!("URL: {}", self.current_url.as_ref().unwrap())),
-            scrollable(browser_list),
+            text(format!(
+                "URL: {}",
+                self.current_url
+                    .as_ref()
+                    .map(|url| url.to_string())
+                    .unwrap_or(String::from("N/A"))
+            )),
+            scrollable(main),
             button(text("Cancel")).on_press(Message::Next)
         ])
         .into()
