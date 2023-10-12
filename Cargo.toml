@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 iced = "0.10.0"
+url = "2.4.1"
