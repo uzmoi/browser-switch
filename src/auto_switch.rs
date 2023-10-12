@@ -10,9 +10,8 @@ pub struct MatchRule {
 
 impl MatchRule {
     pub fn is_match(&self, url: &Url) -> bool {
-        println!("url: {url}, host: {:?}", url.host());
-        if let (Some(a), Some(b)) = (url.host(), &self.host) {
-            return &a.to_string() == b;
+        if let (Some(host), Some(rule_host)) = (url.host(), &self.host) {
+            &host.to_string() == rule_host
         } else {
             false
         }
