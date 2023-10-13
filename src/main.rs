@@ -5,9 +5,10 @@ mod config;
 use browser::Browser;
 use config::Config;
 use iced::{
+    alignment::Vertical,
     theme,
-    widget::{button, column, container, row, scrollable, text, Column},
-    window, Application, Command, Element, Length, Settings,
+    widget::{button, column, container, horizontal_space, image, row, scrollable, text, Column},
+    window, Application, Command, ContentFit, Element, Length, Settings,
 };
 use url::Url;
 
@@ -90,8 +91,8 @@ impl Application for App {
             }
         }
     }
-    fn view(&self) -> Element<'_, Self::Message> {
-        let main: Element<'_, Self::Message> = if let Some(config) = self
+    fn view(&self) -> Element<'_, Message> {
+        let main: Element<'_, Message> = if let Some(config) = self
             .config
             .as_ref()
             .filter(|config| config.browsers.len() != 0)
@@ -101,11 +102,25 @@ impl Application for App {
                     .browsers
                     .iter()
                     .map(|browser| {
+                        static ICON_SIZE: u16 = 32;
+                        let icon: Element<'_, Message> = if let Some(icon) = &browser.icon {
+                            image(icon)
+                                .content_fit(ContentFit::Fill)
+                                .height(ICON_SIZE)
+                                .width(ICON_SIZE)
+                                .into()
+                        } else {
+                            horizontal_space(ICON_SIZE).into()
+                        };
                         row![
-                            text(&browser.name).width(Length::Fill),
+                            icon,
+                            text(&browser.name)
+                                .width(Length::Fill)
+                                .vertical_alignment(Vertical::Center),
                             button("Open").on_press(Message::Open(browser.clone())),
                         ]
                         .spacing(8)
+                        .height(32)
                         .into()
                     })
                     .collect(),

@@ -2,6 +2,7 @@
 pub struct Browser {
     pub name: String,
     command: String,
+    pub icon: Option<String>,
 }
 
 impl Browser {
