@@ -62,7 +62,7 @@ impl Application for App {
             app.current_url = Some(next_url);
             Command::none()
         } else {
-            window::close()
+            window::close(window::Id::MAIN)
         };
 
         (app, command)
@@ -86,7 +86,7 @@ impl Application for App {
                     self.current_url = Some(next_url);
                     Command::none()
                 } else {
-                    window::close()
+                    window::close(window::Id::MAIN)
                 }
             }
         }
@@ -110,7 +110,7 @@ impl Application for App {
                                 .width(ICON_SIZE)
                                 .into()
                         } else {
-                            horizontal_space(ICON_SIZE).into()
+                            horizontal_space().width(ICON_SIZE).into()
                         };
                         row![
                             icon,
@@ -123,7 +123,7 @@ impl Application for App {
                         .height(32)
                         .into()
                     })
-                    .collect(),
+                    .collect::<Vec<_>>(),
             )
             .spacing(12)
             .into()
