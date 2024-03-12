@@ -1,7 +1,6 @@
 use iced::{
-    alignment::Vertical,
     widget::{button, horizontal_space, image, row, text},
-    ContentFit, Element, Length,
+    Alignment, ContentFit, Element, Length,
 };
 
 use crate::app::Message;
@@ -21,7 +20,8 @@ impl Browser {
             .expect("Failed to open browser.");
     }
     pub fn view_browser<'a>(&self) -> Element<'a, Message> {
-        static ICON_SIZE: u16 = 32;
+        const ICON_SIZE: u16 = 32;
+
         let icon: Element<'_, Message> = if let Some(icon) = &self.icon {
             image(icon)
                 .content_fit(ContentFit::Fill)
@@ -29,17 +29,16 @@ impl Browser {
                 .width(ICON_SIZE)
                 .into()
         } else {
-            horizontal_space().width(ICON_SIZE).into()
+            horizontal_space().height(ICON_SIZE).width(ICON_SIZE).into()
         };
-        row![
-            icon,
-            text(&self.name)
-                .width(Length::Fill)
-                .vertical_alignment(Vertical::Center),
-            button("Open").on_press(Message::Open(self.clone())),
-        ]
-        .spacing(8)
-        .height(32)
+
+        button(
+            row![icon, text(&self.name).width(Length::Fill)]
+                .spacing(8)
+                .align_items(Alignment::Center)
+                .padding(4),
+        )
+        .on_press(Message::Open(self.clone()))
         .into()
     }
 }
