@@ -2,7 +2,7 @@ use crate::browser::Browser;
 use crate::config::Config;
 use iced::{
     theme,
-    widget::{button, column, container, row, scrollable, text},
+    widget::{button, column, container, horizontal_space, responsive, row, scrollable, text},
     window, Application, Command, Element, Length,
 };
 use url::Url;
@@ -27,16 +27,31 @@ impl App {
 
         None
     }
-    fn view_browsers<'a>(
-        &self,
-        browsers: impl Iterator<Item = &'a Browser>,
-    ) -> Element<'_, Message> {
-        column(
-            browsers
-                .map(|browser| browser.view_browser())
-                .collect::<Vec<_>>(),
-        )
-        .spacing(12)
+    fn view_browsers<'a>(&'a self, browsers: &'a [Browser]) -> Element<'_, Message> {
+        responsive(move |size| {
+            const BROWSER_BUTTON_WIDTH: usize = 180;
+            const MAX_COLUMNS_COUNT: usize = 6;
+            const ROW_SPACING: u16 = 8;
+
+            let columns_count = ((size.width.floor() as usize + ROW_SPACING as usize)
+                / (BROWSER_BUTTON_WIDTH + ROW_SPACING as usize))
+                .clamp(1, MAX_COLUMNS_COUNT);
+
+            let browsers = browsers
+                .chunks(columns_count)
+                .map(|chunk| {
+                    row(chunk
+                        .iter()
+                        .map(|browser| browser.view_browser())
+                        .chain(std::iter::repeat_with(|| horizontal_space().into()))
+                        .take(columns_count)
+                        .collect::<Vec<_>>())
+                    .spacing(ROW_SPACING)
+                    .into()
+                })
+                .collect::<Vec<_>>();
+            column(browsers).spacing(12).into()
+        })
         .into()
     }
 }
@@ -104,7 +119,7 @@ impl Application for App {
             .as_ref()
             .filter(|config| config.browsers.len() != 0)
         {
-            self.view_browsers(config.browsers.iter())
+            self.view_browsers(&config.browsers)
         } else {
             text("No browser configured.").into()
         };
