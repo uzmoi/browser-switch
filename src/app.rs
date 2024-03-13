@@ -114,36 +114,31 @@ impl Application for App {
         }
     }
     fn view(&self) -> Element<'_, Message> {
-        let browsers: Element<'_, Message> = if let Some(config) = self
-            .config
-            .as_ref()
-            .filter(|config| config.browsers.len() != 0)
-        {
-            self.view_browsers(&config.browsers)
+        let url = self.current_url.as_ref().map(|url| url.to_string());
+
+        let header = row![
+            text(url.unwrap_or(String::from("N/A")))
+                .size(20)
+                .width(Length::Fill),
+            button("Cancel")
+                .on_press(Message::Next)
+                .style(theme::Button::Destructive),
+        ]
+        .spacing(4);
+
+        let main: Element<_> = if let Some(config) = self.config.as_ref() {
+            if config.browsers.is_empty() {
+                text("No browser configured.").into()
+            } else {
+                scrollable(self.view_browsers(&config.browsers)).into()
+            }
         } else {
-            text("No browser configured.").into()
+            text("Failed to load config.").into()
         };
 
-        container(
-            column![
-                row![
-                    text("Browser switch").width(Length::Fill),
-                    button(text("Cancel")).on_press(Message::Next)
-                ],
-                text(format!(
-                    "URL: {}",
-                    self.current_url
-                        .as_ref()
-                        .map(|url| url.to_string())
-                        .unwrap_or(String::from("N/A"))
-                ))
-                .size(20),
-                scrollable(browsers),
-            ]
-            .spacing(18),
-        )
-        .width(Length::Fill)
-        .padding(12)
-        .into()
+        container(column![header, main].spacing(18))
+            .width(Length::Fill)
+            .padding(12)
+            .into()
     }
 }
