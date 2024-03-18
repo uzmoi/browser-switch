@@ -27,7 +27,11 @@ impl App {
 
         None
     }
-    fn view_browsers<'a>(&'a self, browsers: &'a [Browser]) -> Element<'_, Message> {
+    fn view_browsers<'a>(
+        &'a self,
+        browsers: impl Iterator<Item = &'a Browser>,
+    ) -> Element<'_, Message> {
+        let browsers = browsers.collect::<Vec<_>>();
         responsive(move |size| {
             const BROWSER_BUTTON_WIDTH: usize = 180;
             const MAX_COLUMNS_COUNT: usize = 6;
@@ -126,7 +130,7 @@ impl Application for App {
             if config.browsers.is_empty() {
                 text("No browser configured.").into()
             } else {
-                scrollable(self.view_browsers(&config.browsers)).into()
+                scrollable(self.view_browsers(config.browsers.values())).into()
             }
         } else {
             text("Failed to load config.").into()

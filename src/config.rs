@@ -1,5 +1,6 @@
 use std::{fs::File, io};
 
+use indexmap::IndexMap;
 use url::Url;
 
 use crate::{auto_switch::MatchRule, browser::Browser};
@@ -8,7 +9,7 @@ static CONFIG_FILE_NAME: &str = "browser-switch.json";
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct Config {
-    pub browsers: Vec<Browser>,
+    pub browsers: IndexMap<String, Browser>,
     rules: Vec<MatchRule>,
 }
 
@@ -18,18 +19,8 @@ impl Config {
         let config: Config = serde_json::from_reader(config_file)?;
         Ok(config)
     }
-    pub fn match_browser(&self, url: &Url) -> Option<Browser> {
-        for rule in self.rules.iter() {
-            if rule.is_match(url) {
-                if let Some(browser) = self
-                    .browsers
-                    .iter()
-                    .find(|browser| browser.name == rule.browser)
-                {
-                    return Some(browser.clone());
-                }
-            }
-        }
-        None
+    pub fn match_browser(&self, url: &Url) -> Option<&Browser> {
+        let rule = self.rules.iter().find(|rule| rule.is_match(url))?;
+        self.browsers.get(&rule.browser)
     }
 }
