@@ -1,5 +1,8 @@
-use crate::{auto_switch::MatchRule, browser::Browser};
+use std::{fs::File, io};
+
 use url::Url;
+
+use crate::{auto_switch::MatchRule, browser::Browser};
 
 static CONFIG_FILE_NAME: &str = "browser-switch.json";
 
@@ -10,11 +13,10 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load_file() -> Option<serde_json::Result<Config>> {
-        std::fs::read(CONFIG_FILE_NAME).ok().map(|ref config_file| {
-            let config = serde_json::from_slice::<Config>(config_file);
-            config
-        })
+    pub fn load_file() -> io::Result<Config> {
+        let config_file = File::open(CONFIG_FILE_NAME)?;
+        let config: Config = serde_json::from_reader(config_file)?;
+        Ok(config)
     }
     pub fn match_browser(&self, url: &Url) -> Option<Browser> {
         for rule in self.rules.iter() {

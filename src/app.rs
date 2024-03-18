@@ -17,7 +17,7 @@ impl App {
     fn next(&mut self) -> Option<Url> {
         let config = self.config.as_ref()?;
 
-        while let Some(next_url) = self.urls.next() {
+        for next_url in self.urls.by_ref() {
             if let Some(browser) = config.match_browser(&next_url) {
                 browser.open(vec![next_url.to_string()]);
             } else {
@@ -37,19 +37,15 @@ impl App {
                 / (BROWSER_BUTTON_WIDTH + ROW_SPACING as usize))
                 .clamp(1, MAX_COLUMNS_COUNT);
 
-            let browsers = browsers
-                .chunks(columns_count)
-                .map(|chunk| {
-                    row(chunk
-                        .iter()
-                        .map(|browser| browser.view_browser())
-                        .chain(std::iter::repeat_with(|| horizontal_space().into()))
-                        .take(columns_count)
-                        .collect::<Vec<_>>())
-                    .spacing(ROW_SPACING)
-                    .into()
-                })
-                .collect::<Vec<_>>();
+            let browsers = browsers.chunks(columns_count).map(|chunk| {
+                row(chunk
+                    .iter()
+                    .map(|browser| browser.view_browser())
+                    .chain(std::iter::repeat_with(|| horizontal_space().into()))
+                    .take(columns_count))
+                .spacing(ROW_SPACING)
+                .into()
+            });
             column(browsers).spacing(12).into()
         })
         .into()
@@ -74,7 +70,7 @@ impl Application for App {
             .filter_map(|arg| Url::parse(&arg).ok())
             .collect::<Vec<_>>();
 
-        let config = Config::load_file().transpose().ok().flatten();
+        let config = Config::load_file().ok();
         let mut app = App {
             urls: urls.into_iter(),
             current_url: None,
