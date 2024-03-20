@@ -66,19 +66,18 @@ impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Theme = theme::Theme;
-    type Flags = ();
+    type Flags = Option<Config>;
 
-    fn new(_flags: ()) -> (Self, Command<Message>) {
+    fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let urls = std::env::args()
             .skip(1)
             .filter_map(|arg| Url::parse(&arg).ok())
             .collect::<Vec<_>>();
 
-        let config = Config::load_file().ok();
         let mut app = App {
             urls: urls.into_iter(),
             current_url: None,
-            config,
+            config: flags,
         };
         let command = if let Some(next_url) = app.next() {
             app.current_url = Some(next_url);

@@ -9,6 +9,8 @@ static CONFIG_FILE_NAME: &str = "browser-switch.json";
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct Config {
+    #[serde(default)]
+    pub always_on_top: bool,
     pub browsers: IndexMap<String, Browser>,
     rules: Vec<MatchRule>,
 }

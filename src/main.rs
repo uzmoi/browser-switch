@@ -4,14 +4,23 @@ mod browser;
 mod config;
 
 use app::App;
+use config::Config;
 use iced::{window, Application};
 
 fn main() -> iced::Result {
+    let config = Config::load_file().ok();
+
+    let level = match config {
+        Some(ref config) if config.always_on_top => window::Level::AlwaysOnTop,
+        _ => window::Level::Normal,
+    };
+
     App::run(iced::Settings {
         window: window::Settings {
-            level: window::Level::AlwaysOnTop,
+            level,
             ..window::Settings::default()
         },
+        flags: config,
         ..iced::Settings::default()
     })
 }
