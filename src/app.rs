@@ -58,6 +58,7 @@ impl App {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    ReloadConfig,
     Open(Browser),
     Next,
 }
@@ -96,6 +97,10 @@ impl Application for App {
     }
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::ReloadConfig => {
+                self.config = Config::load_file().ok();
+                Command::none()
+            }
             Message::Open(browser) => {
                 if let Some(current_url) = &self.current_url {
                     browser.open(vec![current_url.to_string()]);
@@ -132,7 +137,11 @@ impl Application for App {
                 scrollable(self.view_browsers(config.browsers.values())).into()
             }
         } else {
-            text("Failed to load config.").into()
+            row![
+                "Failed to load config.",
+                button("Reload").on_press(Message::ReloadConfig)
+            ]
+            .into()
         };
 
         container(column![header, main].spacing(18))
