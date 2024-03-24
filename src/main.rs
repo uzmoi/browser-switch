@@ -2,6 +2,7 @@ mod app;
 mod auto_switch;
 mod browser;
 mod config;
+mod url_pattern;
 
 use app::App;
 use config::Config;
