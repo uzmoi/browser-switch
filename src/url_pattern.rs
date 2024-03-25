@@ -14,7 +14,7 @@ pub struct UrlPattern {
 
 static RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"^(?:(?<scheme>\*|[[:alpha:]]+)://)?(?<host>[*.[:word:]]+)(?<port>:\d+)?(?<path>/.+)?$"#,
+        r#"^(?:(?<scheme>\*|[[:alpha:]]+\??)://)?(?<host>[*.[:word:]]+)(?<port>:[0-9]+)?(?<path>/.+)?$"#,
     )
     .unwrap()
 });
@@ -33,7 +33,7 @@ impl UrlPattern {
 
         let port = captures
             .name("port")
-            .and_then(|port| port.as_str().parse().ok());
+            .and_then(|m| m.as_str()[1..].parse().ok());
 
         Some(UrlPattern { scheme, host, port })
     }
