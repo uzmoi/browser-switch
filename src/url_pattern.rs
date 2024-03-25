@@ -5,6 +5,7 @@ use parse_display::Display;
 use regex::Regex;
 use url::{Host, Url};
 
+#[derive(Default, PartialEq, Debug)]
 pub struct UrlPattern {
     scheme: SchemePattern,
     host: HostPattern,
@@ -66,8 +67,9 @@ impl fmt::Display for UrlPattern {
     }
 }
 
-#[derive(Display)]
+#[derive(Default, PartialEq, Debug, Display)]
 enum SchemePattern {
+    #[default]
     #[display("*")]
     Any,
     #[display("https?")]
@@ -86,8 +88,9 @@ impl SchemePattern {
     }
 }
 
-#[derive(Display)]
+#[derive(Default, PartialEq, Debug, Display)]
 enum HostPattern {
+    #[default]
     #[display("*")]
     Any,
     #[display("*{0}")]
@@ -112,12 +115,13 @@ impl HostPattern {
             },
         }
     }
-    fn is_match(&self, host: Host<&str>) -> bool {
+    fn is_match(&self, host: Host<impl AsRef<str> + PartialEq<String>>) -> bool {
         match self {
             HostPattern::Any => true,
             HostPattern::SubDomain(ref domain_pattern) => {
                 debug_assert!(domain_pattern.starts_with('.'));
                 matches!(host, Host::Domain(domain) if {
+                    let domain = domain.as_ref();
                     domain == &domain_pattern[1..] || domain.ends_with(domain_pattern)
                 })
             }
@@ -127,10 +131,102 @@ impl HostPattern {
     }
 }
 
-fn is_localhost(host: &Host<impl ToString>) -> bool {
+fn is_localhost(host: &Host<impl AsRef<str>>) -> bool {
     match host {
-        Host::Domain(domain) => domain.to_string() == "localhost",
+        Host::Domain(domain) => domain.as_ref() == "localhost",
         Host::Ipv4(address) => address.is_loopback(),
         Host::Ipv6(address) => address.is_loopback(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse() {
+        assert_eq!(UrlPattern::parse("*://*").unwrap(), UrlPattern::default());
+
+        let pattern = UrlPattern::parse("https?://*").unwrap();
+        assert_eq!(pattern.scheme, SchemePattern::HttpOrHttps);
+
+        assert_eq!(
+            UrlPattern::parse("https://*.example.com:80").unwrap(),
+            UrlPattern {
+                scheme: SchemePattern::Exact("https".to_owned()),
+                host: HostPattern::SubDomain(".example.com".to_owned()),
+                port: Some(80)
+            }
+        );
+    }
+
+    #[test]
+    fn match_any_scheme() {
+        assert!(SchemePattern::Any.is_match("foo"));
+    }
+
+    #[test]
+    fn match_http_or_https_scheme() {
+        assert!(SchemePattern::HttpOrHttps.is_match("http"));
+        assert!(SchemePattern::HttpOrHttps.is_match("https"));
+        assert!(!SchemePattern::HttpOrHttps.is_match("file"));
+    }
+
+    #[test]
+    fn match_exact_scheme() {
+        let pattern = SchemePattern::Exact("http".to_owned());
+        assert!(pattern.is_match("http"));
+        assert!(!pattern.is_match("https"));
+    }
+
+    #[test]
+    fn parse_host() {
+        assert_eq!(HostPattern::parse("*"), HostPattern::Any);
+        assert_eq!(
+            HostPattern::parse("*.example.com"),
+            HostPattern::SubDomain(".example.com".to_owned())
+        );
+        assert_eq!(HostPattern::parse("localhost"), HostPattern::Localhost);
+        assert_eq!(HostPattern::parse("127.0.0.1"), HostPattern::Localhost);
+        assert_eq!(HostPattern::parse("[::1]"), HostPattern::Localhost);
+        assert_eq!(
+            HostPattern::parse("example.com"),
+            HostPattern::Exact(Host::parse("example.com").unwrap())
+        );
+    }
+
+    impl HostPattern {
+        fn test(&self, s: &str) -> bool {
+            self.is_match(Host::parse(s).unwrap())
+        }
+    }
+
+    #[test]
+    fn match_any_host() {
+        assert!(HostPattern::Any.test("example.com"));
+    }
+
+    #[test]
+    fn match_subdomain() {
+        let pattern = HostPattern::SubDomain(".example.com".to_string());
+        assert!(pattern.test("example.com"));
+        assert!(pattern.test("foo.example.com"));
+        assert!(pattern.test("bar.foo.example.com"));
+        assert!(!pattern.test("example.net"));
+    }
+
+    #[test]
+    fn match_localhost() {
+        assert!(HostPattern::Localhost.test("localhost"));
+        assert!(HostPattern::Localhost.test("127.0.0.1"));
+        assert!(HostPattern::Localhost.test("[::1]"));
+    }
+
+    #[test]
+    fn match_exact_host() {
+        let host = Host::parse("example.com").unwrap();
+        let pattern = HostPattern::Exact(host.clone());
+        assert!(pattern.is_match(host));
+        assert!(!pattern.test("foo.example.com"));
     }
 }
