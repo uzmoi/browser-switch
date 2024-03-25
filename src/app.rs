@@ -1,11 +1,11 @@
-use crate::browser::Browser;
-use crate::config::Config;
 use iced::{
     theme,
     widget::{button, column, container, horizontal_space, responsive, row, scrollable, text},
     window, Application, Command, Element, Length,
 };
 use url::Url;
+
+use crate::{browser::Browser, config::Config};
 
 pub struct App {
     urls: std::vec::IntoIter<Url>,

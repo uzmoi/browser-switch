@@ -2,10 +2,11 @@ use iced::{
     widget::{button, horizontal_space, image, row, text},
     Alignment, ContentFit, Element, Length,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Browser {
     name: String,
     command: String,

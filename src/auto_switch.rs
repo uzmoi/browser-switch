@@ -4,13 +4,13 @@ use url::Url;
 use crate::url_pattern::UrlPattern;
 
 #[derive(Serialize, Deserialize)]
-pub struct MatchRule {
+pub struct AutoSwitchRule {
     pub browser: String,
     #[serde(with = "serde_url_pattern")]
     pattern: Option<UrlPattern>,
 }
 
-impl MatchRule {
+impl AutoSwitchRule {
     pub fn is_match(&self, url: &Url) -> bool {
         matches!(self.pattern, Some(ref pattern) if pattern.is_match(url))
     }

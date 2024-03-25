@@ -1,18 +1,19 @@
 use std::{fs::File, io};
 
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::{auto_switch::MatchRule, browser::Browser};
+use crate::{auto_switch::AutoSwitchRule, browser::Browser};
 
 static CONFIG_FILE_NAME: &str = "browser-switch.json";
 
-#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub always_on_top: bool,
     pub browsers: IndexMap<String, Browser>,
-    rules: Vec<MatchRule>,
+    rules: Vec<AutoSwitchRule>,
 }
 
 impl Config {
