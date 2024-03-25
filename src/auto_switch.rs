@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::url_pattern::UrlPattern;
@@ -6,7 +6,7 @@ use crate::url_pattern::UrlPattern;
 #[derive(Serialize, Deserialize)]
 pub struct MatchRule {
     pub browser: String,
-    #[serde(skip_serializing, deserialize_with = "deserialize_match_rule")]
+    #[serde(with = "serde_url_pattern")]
     pattern: Option<UrlPattern>,
 }
 
@@ -16,9 +16,22 @@ impl MatchRule {
     }
 }
 
-fn deserialize_match_rule<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<UrlPattern>, D::Error> {
-    let pattern = String::deserialize(deserializer)?;
-    Ok(UrlPattern::parse(&pattern))
+mod serde_url_pattern {
+    use super::*;
+
+    pub fn serialize<S: serde::Serializer>(
+        value: &Option<UrlPattern>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        value
+            .as_ref()
+            .map(|pattern| pattern.to_string())
+            .serialize(serializer)
+    }
+    pub fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<UrlPattern>, D::Error> {
+        let pattern = String::deserialize(deserializer)?;
+        Ok(UrlPattern::parse(&pattern))
+    }
 }

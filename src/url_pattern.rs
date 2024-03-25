@@ -1,4 +1,7 @@
+use std::fmt;
+
 use once_cell::sync::Lazy;
+use parse_display::Display;
 use regex::Regex;
 use url::{Host, Url};
 
@@ -50,9 +53,26 @@ impl UrlPattern {
     }
 }
 
+impl fmt::Display for UrlPattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if matches!(self.scheme, SchemePattern::Any) {
+            write!(f, "{}://", self.scheme)?;
+        }
+        write!(f, "{}", self.host)?;
+        if let Some(port) = self.port {
+            write!(f, ":{port}")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Display)]
 enum SchemePattern {
+    #[display("*")]
     Any,
+    #[display("https?")]
     HttpOrHttps,
+    #[display("{0}")]
     Exact(String),
 }
 
@@ -66,10 +86,15 @@ impl SchemePattern {
     }
 }
 
+#[derive(Display)]
 enum HostPattern {
+    #[display("*")]
     Any,
+    #[display("*{0}")]
     SubDomain(String),
+    #[display("localhost")]
     Localhost,
+    #[display("{0}")]
     Exact(Host),
 }
 
