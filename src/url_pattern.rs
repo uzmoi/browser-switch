@@ -10,6 +10,7 @@ pub struct UrlPattern {
     scheme: SchemePattern,
     host: HostPattern,
     port: Option<u16>,
+    path: PathPattern,
 }
 
 static RE: Lazy<Regex> = Lazy::new(|| {
@@ -35,15 +36,30 @@ impl UrlPattern {
             .name("port")
             .and_then(|m| m.as_str()[1..].parse().ok());
 
-        Some(UrlPattern { scheme, host, port })
+        let path = captures.name("path").map_or_else(Default::default, |m| {
+            let path_pattern = m.as_str();
+            if path_pattern.ends_with("/*") {
+                PathPattern::Path(path_pattern[..path_pattern.len() - 1].to_owned())
+            } else {
+                PathPattern::Exact(path_pattern.to_owned())
+            }
+        });
+
+        Some(UrlPattern {
+            scheme,
+            host,
+            port,
+            path,
+        })
     }
     pub fn is_match(&self, url: &Url) -> bool {
         self.scheme.is_match(url.scheme())
             && url.host().map_or(true, |host| {
                 self.host.is_match(host) && self.is_match_port(url.port_or_known_default())
             })
+            && self.path.is_match(url.path())
 
-        // TODO: url.path(), url.query_pairs(), url.fragment();
+        // TODO: url.query_pairs(), url.fragment();
     }
     fn is_match_port(&self, port: Option<u16>) -> bool {
         match (self.port, port) {
@@ -62,6 +78,9 @@ impl fmt::Display for UrlPattern {
         write!(f, "{}", self.host)?;
         if let Some(port) = self.port {
             write!(f, ":{port}")?;
+        }
+        if matches!(self.path, PathPattern::Exact(ref path) if path == "/") {
+            write!(f, "{}", self.path)?;
         }
         Ok(())
     }
@@ -139,6 +158,35 @@ fn is_localhost(host: &Host<impl AsRef<str>>) -> bool {
     }
 }
 
+#[derive(PartialEq, Debug, Display)]
+enum PathPattern {
+    #[display("{0}*")]
+    Path(String),
+    #[display("{0}")]
+    Exact(String),
+}
+
+impl PathPattern {
+    fn is_match(&self, path: &str) -> bool {
+        match self {
+            PathPattern::Path(path_pattern) => {
+                debug_assert!(path_pattern.starts_with('/'));
+                path == path_pattern || path.starts_with(&format!("{path_pattern}/"))
+            }
+            PathPattern::Exact(path_pattern) => {
+                debug_assert!(path_pattern.starts_with('/'));
+                path == path_pattern
+            } // PathPattern::SubPath(ref path_pattern) => path.starts_with(path_pattern),
+        }
+    }
+}
+
+impl Default for PathPattern {
+    fn default() -> Self {
+        PathPattern::Path("/".to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,11 +199,12 @@ mod tests {
         assert_eq!(pattern.scheme, SchemePattern::HttpOrHttps);
 
         assert_eq!(
-            UrlPattern::parse("https://*.example.com:80").unwrap(),
+            UrlPattern::parse("https://*.example.com:80/").unwrap(),
             UrlPattern {
                 scheme: SchemePattern::Exact("https".to_owned()),
                 host: HostPattern::SubDomain(".example.com".to_owned()),
-                port: Some(80)
+                port: Some(80),
+                path: PathPattern::Exact("/".to_owned()),
             }
         );
     }
@@ -228,5 +277,22 @@ mod tests {
         let pattern = HostPattern::Exact(host.clone());
         assert!(pattern.is_match(host));
         assert!(!pattern.test("foo.example.com"));
+    }
+
+    #[test]
+    fn match_path() {
+        let pattern = PathPattern::Path("/foo".to_owned());
+        assert!(pattern.is_match("/foo"));
+        assert!(pattern.is_match("/foo/"));
+        assert!(pattern.is_match("/foo/bar"));
+        assert!(!pattern.is_match("/fooooooooo"));
+    }
+
+    #[test]
+    fn match_exact_path() {
+        let pattern = PathPattern::Exact("/foo".to_owned());
+        assert!(pattern.is_match("/foo"));
+        assert!(!pattern.is_match("/foo/"));
+        assert!(!pattern.is_match("/foo/bar"));
     }
 }
