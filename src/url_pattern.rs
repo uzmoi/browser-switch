@@ -62,11 +62,9 @@ impl UrlPattern {
         // TODO: url.query_pairs(), url.fragment();
     }
     fn is_match_port(&self, port: Option<u16>) -> bool {
-        match (self.port, port) {
-            (None, _) => true,
-            (Some(port_pattern), Some(port)) => port == port_pattern,
-            (Some(_), None) => false,
-        }
+        self.port.map_or(true, |port_pattern| {
+            port.is_some_and(|port| port == port_pattern)
+        })
     }
 }
 
