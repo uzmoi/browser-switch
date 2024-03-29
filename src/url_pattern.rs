@@ -15,7 +15,7 @@ pub struct UrlPattern {
 
 static RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r#"^(?:(?<scheme>\*|[[:alpha:]]+\??)://)?(?<host>[*.[:word:]]+)(?<port>:[0-9]+)?(?<path>/.+)?$"#,
+        r#"^(?:(?<scheme>\*|[[:alpha:]]+\??)://)?(?<host>[*.[:word:]]+)(?<port>:[0-9]+)?(?<path>/.*)?$"#,
     )
     .unwrap()
 });
@@ -72,14 +72,14 @@ impl UrlPattern {
 
 impl fmt::Display for UrlPattern {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if matches!(self.scheme, SchemePattern::Any) {
+        if self.scheme != SchemePattern::Any {
             write!(f, "{}://", self.scheme)?;
         }
         write!(f, "{}", self.host)?;
         if let Some(port) = self.port {
             write!(f, ":{port}")?;
         }
-        if matches!(self.path, PathPattern::Exact(ref path) if path == "/") {
+        if !matches!(self.path, PathPattern::Path(ref path) if path == "/") {
             write!(f, "{}", self.path)?;
         }
         Ok(())
@@ -207,6 +207,16 @@ mod tests {
                 path: PathPattern::Exact("/".to_owned()),
             }
         );
+    }
+
+    #[test]
+    fn display() {
+        let url_pattern = "https://*.example.com:80/";
+        assert_eq!(
+            UrlPattern::parse(url_pattern).unwrap().to_string(),
+            url_pattern
+        );
+        assert_eq!(UrlPattern::default().to_string(), "*");
     }
 
     #[test]
