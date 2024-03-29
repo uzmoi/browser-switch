@@ -20,7 +20,7 @@ impl Browser {
             .spawn()
             .expect("Failed to open browser.");
     }
-    pub fn view_browser<'a>(&self) -> Element<'a, Message> {
+    pub fn view_browser<'a>(&self, browser_id: &str) -> Element<'a, Message> {
         const ICON_SIZE: u16 = 32;
 
         let icon: Element<'_, Message> = if let Some(icon) = &self.icon {
@@ -39,7 +39,7 @@ impl Browser {
                 .align_items(Alignment::Center)
                 .padding(4),
         )
-        .on_press(Message::Open(self.clone()))
+        .on_press(Message::Open(browser_id.to_string()))
         .into()
     }
 }

@@ -29,9 +29,9 @@ impl App {
     }
     fn view_browsers<'a>(
         &'a self,
-        browsers: impl Iterator<Item = &'a Browser>,
+        browsers: impl IntoIterator<Item = (&'a String, &'a Browser)>,
     ) -> Element<'_, Message> {
-        let browsers = browsers.collect::<Vec<_>>();
+        let browsers = browsers.into_iter().collect::<Vec<_>>();
         responsive(move |size| {
             const BROWSER_BUTTON_WIDTH: usize = 180;
             const MAX_COLUMNS_COUNT: usize = 6;
@@ -44,7 +44,7 @@ impl App {
             let browsers = browsers.chunks(columns_count).map(|chunk| {
                 row(chunk
                     .iter()
-                    .map(|browser| browser.view_browser())
+                    .map(|&(browser_id, browser)| browser.view_browser(browser_id))
                     .chain(std::iter::repeat_with(|| horizontal_space().into()))
                     .take(columns_count))
                 .spacing(ROW_SPACING)
@@ -59,7 +59,7 @@ impl App {
 #[derive(Debug, Clone)]
 pub enum Message {
     ReloadConfig,
-    Open(Browser),
+    Open(String),
     Next,
 }
 
@@ -101,10 +101,13 @@ impl Application for App {
                 self.config = Config::load_file().ok();
                 Command::none()
             }
-            Message::Open(browser) => {
-                if let Some(current_url) = &self.current_url {
+            Message::Open(browser_id) => {
+                self.config.as_ref().and_then(|config| {
+                    let browser = config.browsers.get(&browser_id)?;
+                    let current_url = self.current_url.as_ref()?;
                     browser.open(vec![current_url.to_string()]);
-                }
+                    Some(())
+                });
                 self.update(Message::Next)
             }
             Message::Next => {
@@ -134,7 +137,7 @@ impl Application for App {
             if config.browsers.is_empty() {
                 text("No browser configured.").into()
             } else {
-                scrollable(self.view_browsers(config.browsers.values())).into()
+                scrollable(self.view_browsers(config.browsers.iter())).into()
             }
         } else {
             row![
