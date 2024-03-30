@@ -5,12 +5,15 @@ mod config;
 mod url_pattern;
 
 use app::App;
-use config::Config;
+use config::ConfigFile;
 use iced::{window, Application};
 
 fn main() -> iced::Result {
-    let config = Config::load_file().ok();
+    let config_file = ConfigFile::load().ok();
 
+    let config = config_file
+        .as_ref()
+        .and_then(|config_file| config_file.to_config().ok());
     let level = match config {
         Some(ref config) if config.always_on_top => window::Level::AlwaysOnTop,
         _ => window::Level::Normal,
@@ -21,7 +24,7 @@ fn main() -> iced::Result {
             level,
             ..window::Settings::default()
         },
-        flags: config,
+        flags: config_file,
         ..iced::Settings::default()
     })
 }

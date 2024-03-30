@@ -5,11 +5,15 @@ use iced::{
 };
 use url::Url;
 
-use crate::{browser::Browser, config::Config};
+use crate::{
+    browser::Browser,
+    config::{Config, ConfigFile},
+};
 
 pub struct App {
     urls: std::vec::IntoIter<Url>,
     current_url: Option<Url>,
+    config_file: Option<ConfigFile>,
     config: Option<Config>,
 }
 
@@ -67,7 +71,7 @@ impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Theme = theme::Theme;
-    type Flags = Option<Config>;
+    type Flags = Option<ConfigFile>;
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let urls = std::env::args()
@@ -75,10 +79,14 @@ impl Application for App {
             .filter_map(|arg| Url::parse(&arg).ok())
             .collect::<Vec<_>>();
 
+        let config = flags
+            .as_ref()
+            .and_then(|config_file| config_file.to_config().ok());
         let mut app = App {
             urls: urls.into_iter(),
             current_url: None,
-            config: flags,
+            config_file: flags,
+            config,
         };
         let command = if let Some(next_url) = app.next() {
             app.current_url = Some(next_url);
@@ -98,7 +106,8 @@ impl Application for App {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::ReloadConfig => {
-                self.config = Config::load_file().ok();
+                self.config_file = ConfigFile::load().ok();
+                self.config = self.config_file.as_ref().and_then(|cf| cf.to_config().ok());
                 Command::none()
             }
             Message::Open(browser_id) => {
