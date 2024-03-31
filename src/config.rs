@@ -5,15 +5,16 @@ use std::{
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use toml_edit::{de::from_document, DocumentMut};
 use url::Url;
 
 use crate::{auto_switch::AutoSwitchRule, browser::Browser};
 
-static CONFIG_FILE_NAME: &str = "browser-switch.json";
+const CONFIG_FILE_NAME: &str = "browser-switch.toml";
 
 pub struct ConfigFile {
     _file: File,
-    config: Config,
+    doc: DocumentMut,
 }
 
 impl ConfigFile {
@@ -28,18 +29,17 @@ impl ConfigFile {
         let mut file = Self::open()?;
         let mut s = String::new();
         file.read_to_string(&mut s)?;
-        let config = serde_json::from_str(&s)?;
-        Ok(ConfigFile {
-            _file: file,
-            config,
-        })
+        let doc = s
+            .parse::<DocumentMut>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+        Ok(ConfigFile { _file: file, doc })
     }
-    pub fn to_config(&self) -> serde_json::Result<Config> {
-        Ok(self.config.to_owned())
+    pub fn to_config(&self) -> Result<Config, toml_edit::de::Error> {
+        from_document(self.doc.to_owned())
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub always_on_top: bool,
