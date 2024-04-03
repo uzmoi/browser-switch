@@ -30,7 +30,7 @@ impl UrlPattern {
             Some(scheme) => SchemePattern::Exact(scheme.to_owned()),
         };
 
-        let host = HostPattern::parse(&captures["host"]);
+        let host = captures["host"].parse().unwrap_or_default();
 
         let port = captures
             .name("port")
@@ -119,17 +119,6 @@ enum HostPattern {
 }
 
 impl HostPattern {
-    fn parse(host_pattern: &str) -> HostPattern {
-        match Host::parse(host_pattern) {
-            Ok(Host::Domain(domain_pattern)) if domain_pattern == "*" => HostPattern::Any,
-            Ok(Host::Domain(domain_pattern)) if domain_pattern.starts_with("*.") => {
-                HostPattern::SubDomain(domain_pattern[1..].to_string())
-            }
-            Ok(host_pattern) if is_localhost(&host_pattern) => HostPattern::Localhost,
-            Ok(host_pattern) => HostPattern::Exact(host_pattern),
-            Err(_) => HostPattern::Any,
-        }
-    }
     fn is_match(&self, host: Host<impl AsRef<str> + PartialEq<String>>) -> bool {
         match self {
             HostPattern::Any => true,
@@ -143,6 +132,21 @@ impl HostPattern {
             HostPattern::Localhost => is_localhost(&host),
             HostPattern::Exact(ref host_pattern) => &host == host_pattern,
         }
+    }
+}
+
+impl std::str::FromStr for HostPattern {
+    type Err = url::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match Host::parse(s)? {
+            Host::Domain(domain_pattern) if domain_pattern == "*" => HostPattern::Any,
+            Host::Domain(domain_pattern) if domain_pattern.starts_with("*.") => {
+                HostPattern::SubDomain(domain_pattern[1..].to_string())
+            }
+            host_pattern if is_localhost(&host_pattern) => HostPattern::Localhost,
+            host_pattern => HostPattern::Exact(host_pattern),
+        })
     }
 }
 
@@ -236,17 +240,17 @@ mod tests {
 
     #[test]
     fn parse_host() {
-        assert_eq!(HostPattern::parse("*"), HostPattern::Any);
+        assert_eq!("*".parse(), Ok(HostPattern::Any));
         assert_eq!(
-            HostPattern::parse("*.example.com"),
-            HostPattern::SubDomain(".example.com".to_owned())
+            "*.example.com".parse(),
+            Ok(HostPattern::SubDomain(".example.com".to_owned()))
         );
-        assert_eq!(HostPattern::parse("localhost"), HostPattern::Localhost);
-        assert_eq!(HostPattern::parse("127.0.0.1"), HostPattern::Localhost);
-        assert_eq!(HostPattern::parse("[::1]"), HostPattern::Localhost);
+        assert_eq!("localhost".parse(), Ok(HostPattern::Localhost));
+        assert_eq!("127.0.0.1".parse(), Ok(HostPattern::Localhost));
+        assert_eq!("[::1]".parse(), Ok(HostPattern::Localhost));
         assert_eq!(
-            HostPattern::parse("example.com"),
-            HostPattern::Exact(Host::parse("example.com").unwrap())
+            "example.com".parse(),
+            Ok(HostPattern::Exact(Host::parse("example.com").unwrap()))
         );
     }
 
@@ -287,9 +291,14 @@ mod tests {
 
     #[test]
     fn match_punycode_host() {
-        assert!(HostPattern::parse("日本語ドメイン.test").test("xn--eckwd4c7c5976acvb2w6i.test"));
-        assert!(HostPattern::parse("*.日本語ドメイン.test")
-            .test("subdomain.xn--eckwd4c7c5976acvb2w6i.test"));
+        let encoded_subdomain = "subdomain.xn--eckwd4c7c5976acvb2w6i.test";
+        let encoded_domain = &encoded_subdomain["subdomain.".len()..];
+        let pattern = "日本語ドメイン.test".parse::<HostPattern>().unwrap();
+        assert!(pattern.test(encoded_domain));
+        assert!(!pattern.test(encoded_subdomain));
+        let pattern = "*.日本語ドメイン.test".parse::<HostPattern>().unwrap();
+        assert!(pattern.test(encoded_domain));
+        assert!(pattern.test(encoded_subdomain));
     }
 
     #[test]
