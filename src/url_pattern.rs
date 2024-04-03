@@ -120,16 +120,14 @@ enum HostPattern {
 
 impl HostPattern {
     fn parse(host_pattern: &str) -> HostPattern {
-        match host_pattern {
-            "*" => HostPattern::Any,
-            host_pattern if host_pattern.starts_with("*.") => {
-                HostPattern::SubDomain(host_pattern[1..].to_string())
+        match Host::parse(host_pattern) {
+            Ok(Host::Domain(domain_pattern)) if domain_pattern == "*" => HostPattern::Any,
+            Ok(Host::Domain(domain_pattern)) if domain_pattern.starts_with("*.") => {
+                HostPattern::SubDomain(domain_pattern[1..].to_string())
             }
-            host_pattern => match Host::parse(host_pattern) {
-                Ok(host_pattern) if is_localhost(&host_pattern) => HostPattern::Localhost,
-                Ok(host_pattern) => HostPattern::Exact(host_pattern),
-                Err(_) => HostPattern::Any,
-            },
+            Ok(host_pattern) if is_localhost(&host_pattern) => HostPattern::Localhost,
+            Ok(host_pattern) => HostPattern::Exact(host_pattern),
+            Err(_) => HostPattern::Any,
         }
     }
     fn is_match(&self, host: Host<impl AsRef<str> + PartialEq<String>>) -> bool {
@@ -285,6 +283,13 @@ mod tests {
         let pattern = HostPattern::Exact(host.clone());
         assert!(pattern.is_match(host));
         assert!(!pattern.test("foo.example.com"));
+    }
+
+    #[test]
+    fn match_punycode_host() {
+        assert!(HostPattern::parse("日本語ドメイン.test").test("xn--eckwd4c7c5976acvb2w6i.test"));
+        assert!(HostPattern::parse("*.日本語ドメイン.test")
+            .test("subdomain.xn--eckwd4c7c5976acvb2w6i.test"));
     }
 
     #[test]
