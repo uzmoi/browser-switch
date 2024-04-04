@@ -48,7 +48,9 @@ impl App {
             let browsers = browsers.chunks(columns_count).map(|chunk| {
                 row(chunk
                     .iter()
-                    .map(|&(browser_id, browser)| browser.view_browser(browser_id))
+                    .map(|&(browser_id, browser)| {
+                        browser.view_browser(Message::Open(browser_id.to_string()))
+                    })
                     .chain(std::iter::repeat_with(|| horizontal_space().into()))
                     .take(columns_count))
                 .spacing(ROW_SPACING)

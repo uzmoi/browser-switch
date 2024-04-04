@@ -4,8 +4,6 @@ use iced::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::app::Message;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Browser {
     name: String,
@@ -20,7 +18,7 @@ impl Browser {
             .spawn()
             .expect("Failed to open browser.");
     }
-    pub fn view_browser<'a>(&self, browser_id: &str) -> Element<'a, Message> {
+    pub fn view_browser<'a, Message: Clone + 'a>(&self, on_press: Message) -> Element<'a, Message> {
         const ICON_SIZE: u16 = 32;
 
         let icon: Element<'_, Message> = if let Some(icon) = &self.icon {
@@ -39,7 +37,7 @@ impl Browser {
                 .align_items(Alignment::Center)
                 .padding(4),
         )
-        .on_press(Message::Open(browser_id.to_string()))
+        .on_press(on_press)
         .into()
     }
 }
