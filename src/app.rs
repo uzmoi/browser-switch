@@ -110,7 +110,11 @@ impl Application for App {
             Message::ReloadConfig => {
                 self.config_file = ConfigFile::load().ok();
                 self.config = self.config_file.as_ref().and_then(|cf| cf.to_config().ok());
-                Command::none()
+                let level = match self.config {
+                    Some(ref config) if config.always_on_top => window::Level::AlwaysOnTop,
+                    _ => window::Level::Normal,
+                };
+                window::change_level(window::Id::MAIN, level)
             }
             Message::Open(browser_id) => {
                 self.config.as_ref().and_then(|config| {
